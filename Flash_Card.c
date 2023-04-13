@@ -37,8 +37,9 @@ unsigned long int main_buffer_active_counter = 0;
 char END_CHARACTER[]       = {'\0'};       
 char CRLF_CHARACTER[]      = {'\n'};       
 char CRLF_END_CHARACTERS[] = {'\n', '\0'}; 
+char DOTS_CRLF_END_CHARACTERS[] = {'.', '.', '.', '\n', '\0'}; 
 	/*----------------------------------------------------------*/
-	/*           strlen(END_CHARACTER)       == 0;              */
+	/*	     strlen(END_CHARACTER)       == 0;              */
 	/*           strlen(CRLF_CHARACTER)      == 0;              */
 	/*           strlen(CRLF_END_CHARACTERS) == 1;              */
 	/*----------------------------------------------------------*/
@@ -68,16 +69,16 @@ time_t  ascii_to_time_t(char *string);
 void    set_record_ready_to_save(void);
 char   *time_t_to_ascii(time_t uli_time); 
 unsigned long int
-	get_elements_of_record(char *pointer_to_element);
+		get_elements_of_record(char *pointer_to_element);
 void    save(char *buffer_pointr,
-		unsigned long int length_of_buffer_to_save,
-		char *file_name);
+			 unsigned long int length_of_buffer_to_save,
+			 char *file_name);
 char   *read_record(char *input_buffer,
-		unsigned long int starting_point_of_input_buffer,
-		int number_of_elements_to_read);
+					unsigned long int starting_point_of_input_buffer,
+					int number_of_elements_to_read);
 int     get_line(char *output_buffer,
-		 int maximum_characters_to_get,
-		 char *two_bytes_ending_format);
+				 int maximum_characters_to_get,
+				 char *two_bytes_ending_format);
 /******************************************************************************
  * - Opening files                                                            *
  * - Loading data to main buffer from files respectively                      *
@@ -156,7 +157,7 @@ void state_machine(void)
  *    (3 automatic generated integers as time and 3 strings as input)         *
  *   line number   :   functions                                              *
  *  ----------------------------------------                                  *
- *   		   : getchar(void)                                            *
+ *   			   : getchar(void)                                            *
  *                 : time_to_ascii(time_t)                                    *
  *                 : strcat(cahr *, char *)                                   *
  *                 : get_line(char *, int, char *)                            *
@@ -166,12 +167,31 @@ void state_machine(void)
  ******************************************************************************//* ==>> PASSED */
 void add_word(void)
 {
-	int i = 0;
+	long int i;
+	int counter;
 	getchar();
 	printf("enter a word:\n");
 	get_line(word, LINE_BUFFER_SIZE, "wCRLFwEND");
 	if (strlen(word) == 1)
-		goto end;
+                goto end;
+	else {
+		counter = 0;
+		i = strlen(word) - 1;
+		while (i >= 0) {
+			if (word[i] == ' ') {
+				counter++;
+			}
+			i--;
+		}
+		printf("%ld %d\n", strlen(word) - 1, counter);
+		if (counter == strlen(word) - 1)
+			strcpy(word, DOTS_CRLF_END_CHARACTERS);
+		else {
+			i = strlen(word) - 1;
+			word[i - counter] = '\n';
+			word[i - counter + 1] = '\0';
+		}
+	}
 	printf("enter the definition:\n");
 	get_line(definition, LINE_BUFFER_SIZE, "wCRLFwEND");
 	printf("enter an example:\n");
@@ -204,6 +224,64 @@ void add_word(void)
 	end:
 }
 /******************************************************************************
+ * Global usage: buf, main_buffer_active_counter, str, unit,                  *
+ *                                                                            *
+ *                                                                            *
+ *                                                                            *
+ *                                                                            *
+ * Loading three unsigned long int, three strings                             *
+ ******************************************************************************//* ==>> PASSED */
+void delete_word(void)
+{
+	int i = 0;
+	short_buffer[0] = '\0';
+	char str[LINE_BUFFER_SIZE] = {'\0'};
+	unsigned long int length_of_record = 0l;
+	printf("enter the word you want to delete:\n"); 
+	getchar();
+	get_line(str, LINE_BUFFER_SIZE, "wCRLFwEND");
+	main_buffer_active_counter = 0;
+	while (main_buffer_active_counter < length_of_main_buffer) {
+		length_of_record =
+		get_elements_of_record(read_record(main_buffer,
+										   main_buffer_active_counter, 6));
+		main_buffer_active_counter += length_of_record;
+		if (strcmp(word, str) == 0) {                    /* found */
+			printf("*** One word has been found:\n");
+			printf("*************************************\n");
+			printf("***       word:> %s", word);
+			printf("*** definition:> %s", definition);  
+			printf("***    example:> %s", example);
+			printf("*************************************\n");
+			question_point:                              /* Authentication */
+			printf("Do you really want to delete this record? (y/n) ");
+			scanf("%s", short_buffer);
+			if (short_buffer[0] == 'y' || short_buffer[0] == 'Y') {
+				if (main_buffer_active_counter >= length_of_main_buffer) {
+					main_buffer[main_buffer_active_counter - length_of_record] = '\0';
+				} else {
+					i = 0;
+					while (i <= (length_of_main_buffer - main_buffer_active_counter)) {
+						main_buffer[main_buffer_active_counter - length_of_record + i] =
+							main_buffer[main_buffer_active_counter + i];         
+						i++;
+					}
+					main_buffer[length_of_main_buffer - length_of_record] = '\0';
+				}
+				length_of_main_buffer = strlen(main_buffer);
+				main_buffer_active_counter -= length_of_record;
+				save(main_buffer, strlen(main_buffer), file_name);
+			} else if (short_buffer[0] == 'n' || short_buffer[0] == 'N') {
+				goto next; /* cansel deliting */
+			} else {
+				printf("Wrong answer!\n");
+				goto question_point;
+			}
+		} 
+		next:
+	}
+}
+/******************************************************************************
  * - Editing a word, its definition & esamples and saving it on the storage   *
  * - By leaving each field blank and pressing ENTER, that element will not be *
  *   change.                                                                  *
@@ -219,47 +297,55 @@ void edit_word(void)
 {
 	int i = 0;
 	char str[LINE_BUFFER_SIZE];
+	char search_str[LINE_BUFFER_SIZE];
+	char extra_main_buffer[MAIN_BUFFER_SIZE] = {'\0'};
 	record_buffer[0] = '\0';
 	int record_has_been_changed = FALSE;
 	unsigned long int length_of_old_record = 0;
 	printf("enter the word you want to edit:\n"); 
 	getchar();
-	get_line(str, LINE_BUFFER_SIZE, "wCRLFwEND");
+	get_line(search_str, LINE_BUFFER_SIZE, "wCRLFwEND");
 	main_buffer_active_counter = 0;
 	while (main_buffer_active_counter < strlen(main_buffer)) {
 		length_of_old_record =
 		get_elements_of_record(read_record(main_buffer,
-					main_buffer_active_counter, 6));
+						   main_buffer_active_counter, 6));
 		main_buffer_active_counter += length_of_old_record;
-		if (strcmp(word, str) == 0) { /* found */
-			str[0] = '\0';
+		if (strcmp(word, search_str) == 0) { /* found */
 			printf("*** One word has been found:\n");
 			printf("*** word:       %s", word);
 			printf("*** definition: %s", definition);
 			printf("*** example:    %s", example);
 			printf("Edit the word:\n");
+			str[0] = '\0';
 			get_line(str, LINE_BUFFER_SIZE, "wCRLFwEND");
 			if (strlen(str) != 1) {
 				strcpy(word, str);
 				record_has_been_changed = TRUE;
 			}
 			printf("Edit the definition:\n");
+			str[0] = '\0';
 			get_line(str, LINE_BUFFER_SIZE, "wCRLFwEND");
 			if (strlen(str) != 1) {
 				strcpy(definition, str);
 				record_has_been_changed = TRUE;
 			}
 			printf("Edit the example:\n");
+			str[0] = '\0';
 			get_line(str, LINE_BUFFER_SIZE, "wCRLFwEND");
 			if (strlen(str) != 1) {
 				strcpy(example, str);
 				record_has_been_changed = TRUE;
 			}
-			if (record_has_been_changed == FALSE)
+			str[0] = '\0';
+			if (record_has_been_changed == FALSE) {
+				strcat(extra_main_buffer, record_buffer);
 				goto next;
+			}
 			set_record_ready_to_save();
 			if (main_buffer_active_counter >= strlen(main_buffer)) {
 				main_buffer[main_buffer_active_counter - length_of_old_record] = '\0';
+				search_str[0] = '\0';
 			} else {
 				i = 0;
 				while (i <= (length_of_main_buffer - main_buffer_active_counter)) {
@@ -269,13 +355,17 @@ void edit_word(void)
 				}
 				main_buffer[length_of_main_buffer - length_of_old_record] = '\0';
 			}
-			length_of_main_buffer=strlen(main_buffer);
+			length_of_main_buffer = strlen(main_buffer);
 			main_buffer_active_counter -= length_of_old_record;
-			strcat(main_buffer, record_buffer);
-			save(main_buffer, strlen(main_buffer), file_name);
-		}
+			strcat(extra_main_buffer, record_buffer);
+		} else 
+			strcat(extra_main_buffer, record_buffer);
 		next:
 	}
+	save(extra_main_buffer, strlen(extra_main_buffer), file_name);
+	strcpy(main_buffer, extra_main_buffer);
+	length_of_main_buffer = strlen(main_buffer);
+	extra_main_buffer[0] = '\0';
 }
 /******************************************************************************
  *                                                                            *
@@ -295,7 +385,7 @@ void revise_words(void)
 	while (main_buffer_active_counter < strlen(main_buffer)) {
 		length_of_old_record =
 		get_elements_of_record(read_record(main_buffer,
-						  main_buffer_active_counter, 6));
+										   main_buffer_active_counter, 6));
 		main_buffer_active_counter += length_of_old_record;
 		if (revise_time < today_time_t) { /* found */
 			system("clear");
@@ -354,61 +444,6 @@ void revise_words(void)
 
 }
 /******************************************************************************
- * Global usage: buf, main_buffer_active_counter, str, unit,                  *
- *                                                                            *
- * Loading three unsigned long int, three strings                             *
- ******************************************************************************//* ==>> PASSED */
-void delete_word(void)
-{
-	int i = 0;
-	short_buffer[0] = '\0';
-	char str[LINE_BUFFER_SIZE] = {'\0'};
-	unsigned long int length_of_record = 0l;
-	printf("enter the word you want to delete:\n"); 
-	getchar();
-	get_line(str, LINE_BUFFER_SIZE, "wCRLFwEND");
-	main_buffer_active_counter = 0;
-	while (main_buffer_active_counter < length_of_main_buffer) {
-		length_of_record =
-		get_elements_of_record(read_record(main_buffer,
-						 main_buffer_active_counter, 6));
-		main_buffer_active_counter += length_of_record;
-		if (strcmp(word, str) == 0) {                    /* found */
-			printf("*** One word has been found:\n");
-			printf("*************************************\n");
-			printf("***       word:> %s", word);
-			printf("*** definition:> %s", definition);  
-			printf("***    example:> %s", example);
-			printf("*************************************\n");
-			question_point:                              /* Authentication */
-			printf("Do you really want to delete this record? (y/n) ");
-			scanf("%s", short_buffer);
-			if (short_buffer[0] == 'y' || short_buffer[0] == 'Y') {
-				if (main_buffer_active_counter >= length_of_main_buffer) {
-					main_buffer[main_buffer_active_counter - length_of_record] = '\0';
-				} else {
-					i = 0;
-					while (i <= (length_of_main_buffer - main_buffer_active_counter)) {
-						main_buffer[main_buffer_active_counter - length_of_record + i] =
-							main_buffer[main_buffer_active_counter + i];         
-						i++;
-					}
-					main_buffer[length_of_main_buffer - length_of_record] = '\0';
-				}
-				length_of_main_buffer = strlen(main_buffer);
-				main_buffer_active_counter -= length_of_record;
-				save(main_buffer, strlen(main_buffer), file_name);
-			} else if (short_buffer[0] == 'n' || short_buffer[0] == 'N') {
-				goto next; /* cansel deliting */
-			} else {
-				printf("Wrong answer!\n");
-				goto question_point;
-			}
-		} 
-		next:
-	}
-}
-/******************************************************************************
  * - Loading one record into the global record_buffer[] buffer and sending    *
  *   back a pointer to that                                                   *
  ******************************************************************************//* ==>> PASSED */
@@ -421,7 +456,7 @@ char *read_record(char *input_buffer,
 	record_buffer[0] = '\0';
 	for (i = 1; i <= number_of_elements_to_read; i++) {
 		sscanf(input_buffer + starting_point_of_input_buffer
-				    + strlen(record_buffer) , "%[^\n]", line_buffer);
+			+ strlen(record_buffer) , "%[^\n]", line_buffer);
 		strcat(line_buffer, CRLF_END_CHARACTERS);
 		strcat(record_buffer, line_buffer);
 	}
@@ -433,7 +468,7 @@ char *read_record(char *input_buffer,
  ******************************************************************************//* ==>> PASSED */
 unsigned long int get_elements_of_record(char *pointer_to_element)
 {                                                                
-    word[0]       = '\0';
+	word[0]       = '\0';
     example[0]    = '\0';
     definition[0] = '\0';
 	sscanf(pointer_to_element, "%lu\n%lu\n%lu\n%[^\n]\n%[^\n]\n%[^\n]\n",
@@ -446,13 +481,14 @@ unsigned long int get_elements_of_record(char *pointer_to_element)
 /******************************************************************************
  * Global usage: buf, main_buffer_active_counter, str, unit,                  *
  *                                                                            *
+ *                                                                            *
  * Loading three unsigned long int, three strings                             *
  ******************************************************************************//* under cunstraction */
 void find_word(char *string)
 {
 	unsigned long int length;
 	while ((length = get_elements_of_record(read_record(main_buffer,
-						0, 6))) > 0) ;   
+														0, 6))) > 0) ;   
 }
 /******************************************************************************
  * Global usage: buf, main_buffer_active_counter, str, unit,                  *
@@ -460,6 +496,7 @@ void find_word(char *string)
  ******************************************************************************//* ==>> PASSED */
 void list_words(void) 
 {
+	int i;
 	int count = 0;
 	main_buffer_active_counter = 0;
 	while (main_buffer_active_counter < length_of_main_buffer) {
@@ -504,8 +541,20 @@ void set_record_ready_to_save(void)
 	strcat(record_buffer, CRLF_END_CHARACTERS);
 	strcat(record_buffer, time_t_to_ascii(revise_time));
 	strcat(record_buffer, CRLF_END_CHARACTERS);
+	if (strlen(word) == 1) {
+		word[0] = '\0';
+		strcat(word, DOTS_CRLF_END_CHARACTERS);
+	}
 	strcat(record_buffer, word);
+	if (strlen(definition) == 1) {
+		definition[0] = '\0';
+		strcat(definition, DOTS_CRLF_END_CHARACTERS);
+	}
 	strcat(record_buffer, definition);
+	if (strlen(example) == 1) {
+		example[0] = '\0';
+		strcat(example, DOTS_CRLF_END_CHARACTERS);
+	}
 	strcat(record_buffer, example);
 }
 /******************************************************************************
@@ -586,9 +635,9 @@ void save(char *buffer_pointer,
  * - char *buffer_to_save_line: character pointer for saving them             *
  * - int max   : maximum number of input characters                           *
  * - char *end_2_bytes : If adding CRLF and END character at the end of the   *
- *						 string  		      *
+ *						 string  											  *
  *               "nCRLFwEND"  = No   '\n' With '\0'                           *
- *               "nCRLFnEND"  = No   '\n' No   '\0'		              *
+ *               "nCRLFnEND"  = No   '\n' No   '\0'		  			          *
  *               "wCRLFwEND"  = With '\n' With '\0'                           *
  *               "wCRLFnEND"  = With '\n' No   '\0'                           *
  ******************************************************************************//* ==>> PASSED */
