@@ -6,7 +6,7 @@ By adding you can enter a new Word, its Meaning and its Example in separate Entr
 By deleting Command, the entire buffer will be checked for finding the Word.
 - After approving deletion, it will remove the entire Filed of that Word.
 BY editing Command you can change them respectively, but by pressing ENTER and leave it blank it won't change.
-- on the other hand, if you want to remove a Word, its definition or its example you have to enter at least one space.
+- On the other hand, if you want to remove a Word, its definition or its example you have to enter at least one space.
 It will remove extra spaces following the end of string.
 By revising, it looks for every Word that has been reached to the revise time.
 - Assume that every time you remember the Definition and the Example of the Word showed,
