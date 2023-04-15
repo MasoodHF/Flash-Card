@@ -59,7 +59,7 @@ char CRLF_CHARACTER[]           = {'\n'};
 char CRLF_END_CHARACTERS[]      = {'\n', '\0'}; 
 char DOTS_CRLF_END_CHARACTERS[] = {'.', '.', '.', '\n', '\0'}; 
 	/*----------------------------------------------------------*/
-	/*	     strlen(END_CHARACTER)       == 0;              */
+	/*	     	 strlen(END_CHARACTER)       == 0;              */
 	/*           strlen(CRLF_CHARACTER)      == 0;              */
 	/*           strlen(CRLF_END_CHARACTERS) == 1;              */
 	/*----------------------------------------------------------*/
