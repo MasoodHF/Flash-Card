@@ -1,8 +1,7 @@
 # Flash-Card
 
 Adding, editing and removing words and their explanations in order to revise them automatically
-It works on Terminal on Linux and Windows OSes.
-The main menu shows the Commands.
+It works on Terminal on Linux and Windows OSes. The main menu shows the Commands.
 
 ## User manual
 
